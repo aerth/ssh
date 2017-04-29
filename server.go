@@ -19,6 +19,7 @@ type Server struct {
 
 	PasswordHandler  PasswordHandler  // password authentication handler
 	PublicKeyHandler PublicKeyHandler // public key authentication handler
+	KeyboardInteractiveHandler KeyboardInteractiveHandler // keyboard-interactive authentication handler
 	PtyCallback      PtyCallback      // callback for allowing PTY sessions, allows all if nil
 
 	channelHandlers map[string]channelHandler
@@ -69,6 +70,15 @@ func (srv *Server) config(ctx *sshContext) *gossh.ServerConfig {
 			}
 			ctx.SetValue(ContextKeyPublicKey, key)
 			return ctx.Permissions().Permissions, nil
+		}
+	}
+
+	if srv.KeyboardInteractiveHandler != nil {
+		config.KeyboardInteractiveCallback = func( conn gossh.ConnMetadata, challenge gossh.KeyboardInteractiveChallenge )( *gossh.Permissions, error) {
+				if ok := srv.KeyboardInteractiveHandler(ctx, challenge); !ok {
+							return ctx.Permissions().Permissions, fmt.Errorf("permission denied")
+					}
+				return ctx.Permissions().Permissions, nil	
 		}
 	}
 	return config
